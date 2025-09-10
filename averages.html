@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Charts from Transactions</title>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <style>
+    body {
+      background-color: #1F1F1F;
+      color: #C1C1C1;
+      text-align: left;
+    }
+    h1, p {
+      color: #C1C1C1;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Averages</h1>
+<p>Pie chart and line chart automatically generated from transactions</p>
+
+<div id="piechart" style="width: 900px; height: 500px;"></div>
+<div id="curve_chart" style="width: 900px; height: 500px;"></div>
+
+<script type="text/javascript">
+  google.charts.load('current', {'packages':['corechart']});
+  google.charts.setOnLoadCallback(drawCharts);
+
+  function drawCharts() {
+    drawPieChart();
+    drawLineChart();
+  }
+
+  function drawPieChart() {
+    let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+
+    let totals = {};
+    transactions.forEach(t => {
+      if (!totals[t.type]) totals[t.type] = 0;
+      totals[t.type] += t.amount;
+    });
+
+    let chartData = [['Type', 'Amount']];
+    for (let type in totals) {
+      chartData.push([type, totals[type]]);
+    }
+
+    const data = google.visualization.arrayToDataTable(chartData);
+
+    const options = {
+      title: 'Transactions by Type',
+      backgroundColor: '#1F1F1F',
+      titleTextStyle: { color: '#C1C1C1' },
+      legendTextStyle: { color: '#C1C1C1' }
+    };
+
+    const chart = new google.visualization.PieChart(document.getElementById('piechart'));
+    chart.draw(data, options);
+  }
+
+  function drawLineChart() {
+  let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+
+  let balance = 0;
+  let chartData = [['Date', 'Balance ($)']];
+
+  transactions.forEach((t) => {
+    if (t.type === 'Funding') {
+      balance += t.amount;
+    } else if (t.type === 'Expense') {
+      balance -= t.amount;
+    }
+
+    chartData.push([t.date, balance]);
+  });
+
+  const data = google.visualization.arrayToDataTable(chartData);
+
+  const options = {
+    title: 'Balance Over Time',
+    curveType: 'function',
+    legend: { position: 'bottom' },
+    backgroundColor: '#1F1F1F',
+    titleTextStyle: { color: '#C1C1C1' },
+    legendTextStyle: { color: '#C1C1C1' },
+    hAxis: { title: 'Date', textStyle: { color: '#C1C1C1' }, titleTextStyle: { color: '#C1C1C1' } },
+    vAxis: { title: 'Balance ($)', textStyle: { color: '#C1C1C1' }, titleTextStyle: { color: '#C1C1C1' } }
+  };
+
+  const chart = new google.visualization.LineChart(document.getElementById('curve_chart'));
+  chart.draw(data, options);
+}
+
+
+  setInterval(drawCharts, 1000);
+</script>
+
+</body>
+</html>
