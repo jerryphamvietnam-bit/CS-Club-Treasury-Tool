@@ -1,11 +1,19 @@
-document.getElementById("reportSelection").addEventListener("submit", function(e) {
+document.getElementById("reportSelection").addEventListener("submit", async function(e) {
   e.preventDefault();
 
   const name = document.getElementById("name").value.trim();
   const date1 = new Date(document.getElementById("date1").value);
   const date2 = new Date(document.getElementById("date2").value);
 
-  let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+  let transactions = [];
+  try {
+    const res = await fetch("/api/transactions");
+    if (!res.ok) throw new Error("Server returned " + res.status);
+    transactions = await res.json();
+  } catch (err) {
+    console.error("Failed to load transactions from server:", err);
+    transactions = [];
+  }
 
   const filtered = transactions.filter(t => {
     const tDate = new Date(t.date);
