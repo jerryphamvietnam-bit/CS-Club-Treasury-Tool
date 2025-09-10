@@ -2,9 +2,35 @@ window.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('fundraisingForm');
   const container = document.getElementById('pagesContainer');
 
-  let ideas = JSON.parse(localStorage.getItem("ideas")) || [];
+  let ideas = [];
   let history = [];
   let historyRedo = [];
+
+  const IDEAS_API = '/api/ideas'; 
+
+  async function loadIdeas() {
+    try {
+      const res = await fetch(IDEAS_API);
+      if (!res.ok) throw new Error("Server returned " + res.status);
+      ideas = await res.json();
+      renderAllIdeas();
+    } catch (err) {
+      console.error("Failed to load ideas from server:", err);
+      ideas = [];
+    }
+  }
+
+  async function saveIdeas() {
+    try {
+      await fetch(IDEAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ideas)
+      });
+    } catch (err) {
+      console.error("Failed to save ideas to server:", err);
+    }
+  }
 
   function renderAllIdeas() {
     container.innerHTML = '';
@@ -30,16 +56,16 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     newPage.innerHTML = `<h2>${escapeHtml(ideaObj.name)}</h2>
-                     <p style="
-                        white-space: pre-wrap; 
-                        word-wrap: break-word;  
-                        text-align: left;  
-                        max-width: 500px;
-                        margin: 0;
-                        padding: 0;
-                     ">${escapeHtml(ideaObj.idea)}</p> 
-                     <br>
-                     ${imgTag}`;
+                         <p style="
+                            white-space: pre-wrap; 
+                            word-wrap: break-word;  
+                            text-align: left;  
+                            max-width: 500px;
+                            margin: 0;
+                            padding: 0;
+                         ">${escapeHtml(ideaObj.idea)}</p> 
+                         <br>
+                         ${imgTag}`;
 
     const button = document.createElement('button');
     button.textContent = 'Delete';
@@ -48,18 +74,17 @@ window.addEventListener('DOMContentLoaded', () => {
     button.style.display = 'block';
     button.style.margin = '0 auto';
 
-    button.addEventListener('click', () => {
-      history.push(JSON.parse(JSON.stringify(ideas))); 
+    button.addEventListener('click', async () => {
+      history.push(JSON.parse(JSON.stringify(ideas)));
+      historyRedo = [];
       ideas = ideas.filter(i => i !== ideaObj);
-      localStorage.setItem('ideas', JSON.stringify(ideas));
+      await saveIdeas();
       renderAllIdeas();
     });
 
     newPage.appendChild(button);
     container.appendChild(newPage);
   }
-
-  renderAllIdeas();
 
   form.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -68,11 +93,11 @@ window.addEventListener('DOMContentLoaded', () => {
     const ideaText = document.getElementById('idea')?.value?.trim() || '';
     const imageFile = document.getElementById('imageUpload')?.files?.[0];
 
-    function saveIdea(imageBase64 = '') {
-      history.push(JSON.parse(JSON.stringify(ideas))); 
+    function addIdea(imageBase64 = '') {
+      history.push(JSON.parse(JSON.stringify(ideas)));
       const newIdea = { name, idea: ideaText, imageBase64 };
       ideas.push(newIdea);
-      localStorage.setItem("ideas", JSON.stringify(ideas));
+      saveIdeas();
       renderAllIdeas();
       form.reset();
     }
@@ -80,21 +105,21 @@ window.addEventListener('DOMContentLoaded', () => {
     if (imageFile) {
       const reader = new FileReader();
       reader.onload = function() {
-        saveIdea(reader.result);
+        addIdea(reader.result);
       };
       reader.readAsDataURL(imageFile);
     } else {
-      saveIdea();
+      addIdea();
     }
   });
 
-  document.addEventListener('keydown', function(event) {
+  document.addEventListener('keydown', async function(event) {
     if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
       event.preventDefault();
       if (history.length > 0) {
         historyRedo.push(JSON.parse(JSON.stringify(ideas)));
         ideas = history.pop();
-        localStorage.setItem('ideas', JSON.stringify(ideas));
+        await saveIdeas();
         renderAllIdeas();
       }
     } else if ((event.ctrlKey || event.metaKey) && event.key === 'y') {
@@ -102,9 +127,11 @@ window.addEventListener('DOMContentLoaded', () => {
       if (historyRedo.length > 0) {
         history.push(JSON.parse(JSON.stringify(ideas)));
         ideas = historyRedo.pop();
-        localStorage.setItem('ideas', JSON.stringify(ideas));
+        await saveIdeas();
         renderAllIdeas();
       }
     }
   });
+
+  loadIdeas();
 });
