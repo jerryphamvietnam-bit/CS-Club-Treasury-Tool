@@ -2,34 +2,47 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const fs = require("fs");
+const path = require("path");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// Use JSON parser
+// Middleware
 app.use(bodyParser.json());
-app.use(express.static("public")); // serve your HTML/JS
+app.use(express.static(path.join(__dirname, "public"))); // serve HTML/JS/CSS
 
-// In-memory storage (or load from file)
+// Load transactions from file
 let transactions = [];
-try {
-  transactions = JSON.parse(fs.readFileSync("transactions.json"));
-} catch {}
+const dataFile = path.join(__dirname, "transactions.json");
 
-function saveToFile() {
-  fs.writeFileSync("transactions.json", JSON.stringify(transactions, null, 2));
+try {
+  if (fs.existsSync(dataFile)) {
+    transactions = JSON.parse(fs.readFileSync(dataFile));
+  }
+} catch (err) {
+  console.error("Failed to load transactions:", err);
 }
 
-// GET all transactions
+// Save transactions to file
+function saveToFile() {
+  fs.writeFileSync(dataFile, JSON.stringify(transactions, null, 2));
+}
+
+// API routes
 app.get("/api/transactions", (req, res) => {
   res.json(transactions);
 });
 
-// POST updated transactions
 app.post("/api/transactions", (req, res) => {
   transactions = req.body;
   saveToFile();
   res.json({ status: "ok" });
 });
 
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+// Serve index.html for all other routes (so React/SPA or HTML works)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Start server
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
