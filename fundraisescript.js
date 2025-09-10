@@ -2,33 +2,29 @@ window.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('fundraisingForm');
   const container = document.getElementById('pagesContainer');
 
-  let ideas = [];
+  let ideas = [];      
   let history = [];
   let historyRedo = [];
 
-  const IDEAS_API = '/api/ideas'; 
-
   async function loadIdeas() {
     try {
-      const res = await fetch(IDEAS_API);
-      if (!res.ok) throw new Error("Server returned " + res.status);
+      const res = await fetch("/api/ideas");
       ideas = await res.json();
       renderAllIdeas();
     } catch (err) {
       console.error("Failed to load ideas from server:", err);
-      ideas = [];
     }
   }
 
-  async function saveIdeas() {
+  async function addIdeaToServer(newIdea) {
     try {
-      await fetch(IDEAS_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ideas)
+      await fetch("/api/ideas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newIdea)
       });
     } catch (err) {
-      console.error("Failed to save ideas to server:", err);
+      console.error("Failed to save idea to server:", err);
     }
   }
 
@@ -75,10 +71,19 @@ window.addEventListener('DOMContentLoaded', () => {
     button.style.margin = '0 auto';
 
     button.addEventListener('click', async () => {
-      history.push(JSON.parse(JSON.stringify(ideas)));
+      history.push(JSON.parse(JSON.stringify(ideas))); 
       historyRedo = [];
-      ideas = ideas.filter(i => i !== ideaObj);
-      await saveIdeas();
+
+      const index = ideas.indexOf(ideaObj);
+      if (index !== -1) {
+        ideas.splice(index, 1);
+        try {
+          await fetch(`/api/ideas/${index}`, { method: 'DELETE' });
+        } catch (err) {
+          console.error("Failed to delete idea on server:", err);
+        }
+      }
+
       renderAllIdeas();
     });
 
@@ -93,33 +98,34 @@ window.addEventListener('DOMContentLoaded', () => {
     const ideaText = document.getElementById('idea')?.value?.trim() || '';
     const imageFile = document.getElementById('imageUpload')?.files?.[0];
 
-    function addIdea(imageBase64 = '') {
-      history.push(JSON.parse(JSON.stringify(ideas)));
+    function saveIdea(imageBase64 = '') {
+      history.push(JSON.parse(JSON.stringify(ideas))); 
+
       const newIdea = { name, idea: ideaText, imageBase64 };
       ideas.push(newIdea);
-      saveIdeas();
       renderAllIdeas();
       form.reset();
+
+      addIdeaToServer(newIdea);
     }
 
     if (imageFile) {
       const reader = new FileReader();
       reader.onload = function() {
-        addIdea(reader.result);
+        saveIdea(reader.result);
       };
       reader.readAsDataURL(imageFile);
     } else {
-      addIdea();
+      saveIdea();
     }
   });
 
-  document.addEventListener('keydown', async function(event) {
+  document.addEventListener('keydown', function(event) {
     if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
       event.preventDefault();
       if (history.length > 0) {
         historyRedo.push(JSON.parse(JSON.stringify(ideas)));
         ideas = history.pop();
-        await saveIdeas();
         renderAllIdeas();
       }
     } else if ((event.ctrlKey || event.metaKey) && event.key === 'y') {
@@ -127,7 +133,6 @@ window.addEventListener('DOMContentLoaded', () => {
       if (historyRedo.length > 0) {
         history.push(JSON.parse(JSON.stringify(ideas)));
         ideas = historyRedo.pop();
-        await saveIdeas();
         renderAllIdeas();
       }
     }
