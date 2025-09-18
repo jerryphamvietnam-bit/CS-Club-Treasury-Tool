@@ -51,17 +51,19 @@ window.addEventListener('DOMContentLoaded', () => {
         .replace(/"/g,'&quot;');
     }
 
-    newPage.innerHTML = `<h2>${escapeHtml(ideaObj.name)}</h2>
-                         <p style="
-                            white-space: pre-wrap; 
-                            word-wrap: break-word;  
-                            text-align: left;  
-                            max-width: 500px;
-                            margin: 0;
-                            padding: 0;
-                         ">${escapeHtml(ideaObj.idea)}</p> 
-                         <br>
-                         ${imgTag}`;
+    newPage.innerHTML = `
+      <h2>${escapeHtml(ideaObj.name)}</h2>
+      <p style="
+        white-space: pre-wrap; 
+        word-wrap: break-word;  
+        text-align: left;  
+        max-width: 500px;
+        margin: 0;
+        padding: 0;
+      ">${escapeHtml(ideaObj.idea)}</p> 
+      <br>
+      ${imgTag}
+    `;
 
     const button = document.createElement('button');
     button.textContent = 'Delete';
